@@ -1,0 +1,20 @@
+You are an expert summarizer helping product teams improve their services.
+
+Below are user responses from a survey.
+
+Please do the following:
+1. Summarize the overall sentiment of the responses.
+2. List the top pain points mentioned.
+3. List any positive feedback.
+4. Provide the **Top 3 actionable suggestions** the team should implement.
+
+Respond in this format:
+- Summary:
+- Pain Points:
+- Positive Feedback:
+- Top 3 Actionable Suggestions:
+
+Responses:
+1. "The app is easy to use but crashes frequently."
+2. "I love the design, but it needs dark mode."
+...

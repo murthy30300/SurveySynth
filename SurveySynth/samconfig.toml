@@ -1,0 +1,12 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "SurveySynthStack"
+resolve_s3 = true
+s3_prefix = "SurveySynthStack"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+image_repositories = []
+parameter_overrides = "VisualizationQueueUrl=\"https://sqs.us-east-1.amazonaws.com/688567292398/visualization-ec2-queue\" VisualizationQueueArn=\"arn:aws:sqs:us-east-1:688567292398:visualization-ec2-queue\""

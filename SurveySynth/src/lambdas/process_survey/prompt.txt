@@ -1,0 +1,17 @@
+You are an expert summarizer helping product teams improve their services.
+
+Given the following survey responses:
+
+[FEEDBACK]
+
+Please do the following:
+1. Summarize the overall sentiment.
+2. List the top pain points.
+3. List any positive feedback.
+4. Provide the top 3 actionable suggestions.
+
+Output format:
+- Summary:
+- Pain Points:
+- Positive Feedback:
+- Top 3 Actionable Suggestions:

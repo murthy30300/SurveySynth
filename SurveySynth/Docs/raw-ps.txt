@@ -1,0 +1,20 @@
+BRD (Business Required Document)
+Application Title: Survey Report Analyzer For Course Instructors
+User will logged into the website, we will give a unique id,
+Phase-1
+User Uploads the CSV, 
+send to s3 (raw data).. the file needs to save with the user unique id.append(the count of this file).. I think we can use hash map(key,value) to append count to it
+
+phase-2
+Then pre processing using glue, that csv file uses some sort of ETL technique (yet to be decided),
+What columns it have, 
+That needs to send another ai model, that can give what insights can we get from those columns, 
+If it have column like feedback or comment section we can perform sentiment analysis, to segregate positive, negative neutral
+
+
+spark pre processing, will upload again in s3 (refined_data folder) will be saved with user_Id appended with count can hash map(key, value) be used
+what else can we do::
+display dashboard may be we can use Quick sight (not yet planned what dashboards may require)
+phase 3
+That csv files in refined folder, may trigger lambda function that can trigger bedrock and quick sight to display some useful dash boards,  and actionable insights
+Pdf can be downloaded

@@ -1,0 +1,191 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SurveySynth - Serverless Survey Summarizer
+Parameters:
+  VisualizationQueueUrl:
+    Type: String
+    Default: "https://sqs.us-east-1.amazonaws.com/688567292398/visualization-ec2-queue"
+    Description: "URL of the existing SQS queue for visualization"
+    
+  VisualizationQueueArn:
+    Type: String
+    Default: "arn:aws:sqs:us-east-1:688567292398:visualization-ec2-queue"
+    Description: "ARN of the existing SQS queue for visualization"
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 512
+    Architectures: [x86_64]
+
+Resources:
+  # ...existing code...
+  RegisterUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: registerUserHandler
+      CodeUri: src/lambdas/auth/
+      Handler: register_user.lambda_handler
+      Runtime: python3.12
+      MemorySize: 256
+      Timeout: 10
+      Policies:
+        - AmazonDynamoDBFullAccess  # ⚠️ Dev only — restrict later
+      Events:
+        RegisterAPI:
+          Type: Api
+          Properties:
+            Path: /register
+            Method: POST
+        RegisterOptions:
+          Type: Api
+          Properties:
+            Path: /register
+            Method: OPTIONS
+        LoginAPI:
+          Type: Api
+          Properties:
+            Path: /login
+            Method: POST
+        LoginOptions:
+          Type: Api
+          Properties:
+            Path: /login
+            Method: OPTIONS
+
+  SurveyUploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: surveysynth-uploads
+      NotificationConfiguration: {}
+  UploadSurveyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: uploadSurveyHandler
+      CodeUri: src/lambdas/process_survey/
+      Handler: uploadSurveyHandler.lambda_handler
+      Runtime: python3.12
+      Timeout: 15
+      Policies:
+        - AmazonS3FullAccess
+        - AmazonDynamoDBFullAccess
+        - AWSGlueConsoleFullAccess
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: 
+                - glue:StartJobRun
+              Resource: !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:job/SurveyPreprocessJob
+      Events:
+        UploadAPI:
+          Type: Api
+          Properties:
+            Path: /upload
+            Method: POST
+        UploadOptions:
+          Type: Api
+          Properties:
+            Path: /upload
+            Method: OPTIONS
+  UpdateStatusPostGlueFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: updateStatusPostGlue
+      CodeUri: src/lambdas/post_glue_update/
+      Handler: handler.lambda_handler
+      Runtime: python3.12
+      Policies:
+        - AmazonDynamoDBFullAccess
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - glue:GetJobRun
+              Resource: !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:job/SurveyPreprocessJob
+
+      Events:
+        GlueJobStatus:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - "aws.glue"
+              detail-type:
+                - "Glue Job State Change"
+              detail:
+                jobName:
+                  - "SurveyPreprocessJob"
+                state:
+                  - "SUCCEEDED"
+
+  FeedbackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: feedbackHandler
+      CodeUri: src/lambdas/summarize_feedback/
+      Handler: handler.lambda_handler
+      Runtime: python3.12
+      Timeout: 300  # 5 minutes for Bedrock processing
+      MemorySize: 1024  # More memory for data processing
+      Layers:
+        - arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:1
+      Policies:
+        - AmazonS3ReadOnlyAccess
+        - AmazonBedrockFullAccess
+        - AmazonDynamoDBFullAccess
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:DescribeStream
+                - dynamodb:GetRecords
+                - dynamodb:GetShardIterator
+                - dynamodb:ListStreams
+              Resource: "arn:aws:dynamodb:*:*:table/SurveyMeta/stream/*"
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: "arn:aws:s3:::surveysynth-uploads/*"
+      Events:
+        DynamoDBStream:
+          Type: DynamoDB
+          Properties:
+            Stream: arn:aws:dynamodb:us-east-1:688567292398:table/SurveyMeta/stream/2025-06-25T10:24:06.087
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 10
+            MaximumBatchingWindowInSeconds: 5
+
+  TriggerVisualizationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: triggerVisualizationJob
+      CodeUri: src/lambdas/visualization-lambda/
+      Handler: trigger_glue.lambda_handler
+      Runtime: python3.12
+      MemorySize: 256
+      Timeout: 10
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - glue:StartJobRun
+              Resource: !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:job/Visual_job
+            - Effect: Allow
+              Action:
+                - dynamodb:DescribeStream
+                - dynamodb:GetRecords
+                - dynamodb:GetShardIterator
+                - dynamodb:ListStreams
+              Resource: arn:aws:dynamodb:us-east-1:688567292398:table/SurveyInsights/stream/2025-06-26T17:09:20.311
+      Events:
+        DynamoStreamTrigger:
+          Type: DynamoDB
+          Properties:
+            Stream: arn:aws:dynamodb:us-east-1:688567292398:table/SurveyInsights/stream/2025-06-26T17:09:20.311
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 1
+            BisectBatchOnFunctionError: true
+            MaximumRetryAttempts: 2
+            Enabled: true
