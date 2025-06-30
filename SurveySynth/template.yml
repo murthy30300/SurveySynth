@@ -20,6 +20,77 @@ Globals:
     Architectures: [x86_64]
 
 Resources:
+  # --- API Gateway for Users Table ---
+  UsersApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: usersApiHandler
+      CodeUri: src/lambdas/users_api/
+      Handler: handler.lambda_handler
+      Runtime: python3.12
+      Timeout: 10
+      MemorySize: 256
+      Policies:
+        - AmazonDynamoDBFullAccess
+      Events:
+        UsersApi:
+          Type: Api
+          Properties:
+            Path: /users
+            Method: GET
+        UsersOptions:
+          Type: Api
+          Properties:
+            Path: /users
+            Method: OPTIONS
+
+  # --- API Gateway for SurveyMeta Table ---
+  SurveyMetaApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: surveyMetaApiHandler
+      CodeUri: src/lambdas/surveymeta_api/
+      Handler: handler.lambda_handler
+      Runtime: python3.12
+      Timeout: 10
+      MemorySize: 256
+      Policies:
+        - AmazonDynamoDBFullAccess
+      Events:
+        SurveyMetaApi:
+          Type: Api
+          Properties:
+            Path: /surveys
+            Method: GET
+        SurveyMetaOptions:
+          Type: Api
+          Properties:
+            Path: /surveys
+            Method: OPTIONS
+
+  # --- API Gateway for SurveyInsights Table ---
+  SurveyInsightsApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: surveyInsightsApiHandler
+      CodeUri: src/lambdas/surveyinsights_api/
+      Handler: handler.lambda_handler
+      Runtime: python3.12
+      Timeout: 10
+      MemorySize: 256
+      Policies:
+        - AmazonDynamoDBFullAccess
+      Events:
+        SurveyInsightsApi:
+          Type: Api
+          Properties:
+            Path: /insights
+            Method: GET
+        SurveyInsightsOptions:
+          Type: Api
+          Properties:
+            Path: /insights
+            Method: OPTIONS
   # ...existing code...
   RegisterUserFunction:
     Type: AWS::Serverless::Function
@@ -179,6 +250,11 @@ Resources:
                 - dynamodb:GetShardIterator
                 - dynamodb:ListStreams
               Resource: arn:aws:dynamodb:us-east-1:688567292398:table/SurveyInsights/stream/2025-06-26T17:09:20.311
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: '*'
       Events:
         DynamoStreamTrigger:
           Type: DynamoDB
@@ -189,3 +265,28 @@ Resources:
             BisectBatchOnFunctionError: true
             MaximumRetryAttempts: 2
             Enabled: true
+  GetChartUrlsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: getChartUrlsHandler
+      CodeUri: src/lambdas/visualization-lambda/
+      Handler: get_chart_urls.lambda_handler
+      Runtime: python3.12
+      Timeout: 10
+      MemorySize: 128
+      Policies:
+        - AmazonDynamoDBReadOnlyAccess
+      Environment:
+        Variables:
+          SURVEY_INSIGHTS_TABLE: SurveyInsights
+      Events:
+        GetChartUrlsApi:
+          Type: Api
+          Properties:
+            Path: /chart-urls
+            Method: GET
+        GetChartUrlsApi:
+          Type: Api
+          Properties:
+            Path: /chart-urls
+            Method: OPTIONS

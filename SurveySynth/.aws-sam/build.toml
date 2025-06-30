@@ -43,6 +43,33 @@ architecture = "x86_64"
 handler = "trigger_glue.lambda_handler"
 manifest_hash = ""
 packagetype = "Zip"
-functions = ["TriggerVisualizationFunction"]
+functions = ["TriggerVisualizationFunction", "GetChartUrlsFunction"]
+
+[function_build_definitions.3c9644fd-fe61-4ff2-8bd6-0a96f217ecb1]
+codeuri = "D:\\4th\\Summer\\LAMBDA\\SurveySynth\\src\\lambdas\\users_api"
+runtime = "python3.12"
+architecture = "x86_64"
+handler = "handler.lambda_handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["UsersApiFunction"]
+
+[function_build_definitions.fd451eb3-7623-488e-92ff-a6da02de3218]
+codeuri = "D:\\4th\\Summer\\LAMBDA\\SurveySynth\\src\\lambdas\\surveymeta_api"
+runtime = "python3.12"
+architecture = "x86_64"
+handler = "handler.lambda_handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["SurveyMetaApiFunction"]
+
+[function_build_definitions.c8bde2ee-b683-4781-966e-1fb46eb6875f]
+codeuri = "D:\\4th\\Summer\\LAMBDA\\SurveySynth\\src\\lambdas\\surveyinsights_api"
+runtime = "python3.12"
+architecture = "x86_64"
+handler = "handler.lambda_handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["SurveyInsightsApiFunction"]
 
 [layer_build_definitions]

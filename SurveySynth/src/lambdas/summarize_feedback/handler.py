@@ -169,8 +169,21 @@ Please provide a structured analysis in the following JSON format:
     "topics_mentioned": [
         "topic 1",
         "topic 2"
-    ]
+    ],
+    "topic_ratings": {{
+        "topic 1": {{
+            "avg_rating": <average rating out of 5>,
+            "positive_count": <number>,
+            "negative_count": <number>
+        }},
+        "topic 2": {{
+            "avg_rating": <average rating out of 5>,
+            "positive_count": <number>,
+            "negative_count": <number>
+        }}
+    }}
 }}
+For each topic mentioned, estimate an average rating out of 5 (based on the feedback), and count positive and negative mentions. Include this as "topic_ratings" in the JSON.
 
 Focus on:
 1. Overall sentiment distribution
@@ -200,7 +213,6 @@ Respond with valid JSON only.
                 'temperature': 0.3
             })
         )
-        
         # Parse response
         response_body = json.loads(response['body'].read())
         analysis_text = response_body['content'][0]['text']
@@ -212,7 +224,8 @@ Respond with valid JSON only.
             end_idx = analysis_text.rfind('}') + 1
             json_str = analysis_text[start_idx:end_idx]
             analysis_result = json.loads(json_str)
-            
+
+            print("Bedrock analysis_result:", json.dumps(analysis_result, indent=2))
             print(f"Chunk {chunk_num} analysis completed successfully")
             return analysis_result
             
@@ -285,7 +298,96 @@ def combine_insights(chunk_insights, feedback_count, total_responses):
     unique_pain_points = list(dict.fromkeys(all_pain_points))[:5]
     unique_insights = list(dict.fromkeys(all_insights))[:3]
     unique_positive = list(dict.fromkeys(all_positive_aspects))[:3]
-    
+    print(f"Aggregated unique positive_aspects: {unique_positive}")
+
+    # If no positive aspects found, add a default message
+    if not unique_positive:
+        unique_positive = ["No specific positive aspects identified"]
+
+    # --- Begin logic for avg_satisfaction and topic_sentiment_map ---
+    # We'll try to extract topic ratings from chunk_insights if present
+    # and also compute avg_satisfaction if a 'satisfaction' or similar field is present.
+    # This is a best-effort approach based on the structure of chunk_insights.
+
+    topic_sentiment_map = {}
+    satisfaction_scores = []
+    topic_counts = {}
+
+    for chunk in chunk_insights:
+        # If chunk has topics_mentioned and sentiment_scores, try to aggregate
+        topics = chunk.get('topics_mentioned', [])
+        sentiment = chunk.get('sentiment_scores', {})
+        # If chunk has topic_ratings, use them (custom extension, not in prompt)
+        topic_ratings = chunk.get('topic_ratings', {})
+        # If chunk has avg_satisfaction, use it (custom extension, not in prompt)
+        if 'avg_satisfaction' in chunk:
+            satisfaction_scores.append(chunk['avg_satisfaction'])
+        # If chunk has satisfaction_score, use it (custom extension, not in prompt)
+        if 'satisfaction_score' in chunk:
+            satisfaction_scores.append(chunk['satisfaction_score'])
+
+        # Try to build topic_sentiment_map from topic_ratings if present
+        if topic_ratings:
+            for topic, rating_info in topic_ratings.items():
+                if topic not in topic_sentiment_map:
+                    topic_sentiment_map[topic] = {
+                        'avg_rating': 0.0,
+                        'positive_count': 0,
+                        'negative_count': 0,
+                        'total_rating': 0.0,
+                        'count': 0
+                    }
+                topic_sentiment_map[topic]['total_rating'] += rating_info.get('avg_rating', 0.0)
+                topic_sentiment_map[topic]['count'] += 1
+                topic_sentiment_map[topic]['positive_count'] += rating_info.get('positive_count', 0)
+                topic_sentiment_map[topic]['negative_count'] += rating_info.get('negative_count', 0)
+        # If not, try to count topics for positive/negative from sentiment
+        elif topics and sentiment:
+            for topic in topics:
+                if topic not in topic_sentiment_map:
+                    topic_sentiment_map[topic] = {
+                        'avg_rating': 0.0,
+                        'positive_count': 0,
+                        'negative_count': 0,
+                        'total_rating': 0.0,
+                        'count': 0
+                    }
+                # Heuristic: if positive > negative, count as positive, else negative
+                if sentiment.get('positive', 0) > sentiment.get('negative', 0):
+                    topic_sentiment_map[topic]['positive_count'] += 1
+                else:
+                    topic_sentiment_map[topic]['negative_count'] += 1
+                topic_sentiment_map[topic]['count'] += 1
+
+    # Finalize avg_rating for each topic
+    for topic, info in topic_sentiment_map.items():
+        if info['count'] > 0:
+            info['avg_rating'] = round(info['total_rating'] / info['count'], 2) if info['total_rating'] > 0 else 0.0
+        # Remove helper fields
+        del info['total_rating']
+        del info['count']
+
+    # Compute avg_satisfaction
+    if satisfaction_scores:
+        avg_satisfaction = round(sum(satisfaction_scores) / len(satisfaction_scores), 2)
+    else:
+        # If not available, try to estimate from sentiment (e.g., map positive/neutral/negative to 5/3/1)
+        total_score = 0
+        total_count = 0
+        for chunk in chunk_insights:
+            sentiment = chunk.get('sentiment_scores', {})
+            if sentiment:
+                total = sum(sentiment.values())
+                if total > 0:
+                    score = (
+                        sentiment.get('positive', 0) * 5 +
+                        sentiment.get('neutral', 0) * 3 +
+                        sentiment.get('negative', 0) * 1
+                    ) / total
+                    total_score += score
+                    total_count += 1
+        avg_satisfaction = round(total_score / total_count, 2) if total_count > 0 else 0.0
+
     return {
         'overall_sentiment': overall_sentiment,
         'sentiment_breakdown': {
@@ -298,7 +400,9 @@ def combine_insights(chunk_insights, feedback_count, total_responses):
         'top_insights': unique_insights,
         'response_count': total_responses,
         'feedback_count': feedback_count,
-        'analysis_chunks': num_chunks
+        'analysis_chunks': num_chunks,
+        'avg_satisfaction': avg_satisfaction,
+        'topic_sentiment_map': topic_sentiment_map
     }
 
 def store_insights(user_id, upload_id, insights_data):
@@ -315,7 +419,20 @@ def store_insights(user_id, upload_id, insights_data):
             else:
                 return obj
         
-        # Prepare the item matching your table structure
+        # Example: fetch total_survey_count and completed_analyses for the user
+        # You should implement actual logic to fetch these from your DB as needed
+        total_survey_count = 0
+        completed_analyses = 0
+        try:
+            # Count all surveys for this user
+            response = survey_meta_table.query(
+                KeyConditionExpression=boto3.dynamodb.conditions.Key('user_id').eq(user_id)
+            )
+            total_survey_count = len(response.get('Items', []))
+            completed_analyses = sum(1 for item in response.get('Items', []) if item.get('status') == 'analyzed')
+        except Exception as e:
+            print(f"Failed to fetch survey counts: {str(e)}")
+
         item = {
             'user_id': user_id,
             'upload_id': upload_id,
@@ -327,9 +444,13 @@ def store_insights(user_id, upload_id, insights_data):
             'overall_sentiment': insights_data.get('overall_sentiment', 'neutral'),
             'sentiment_breakdown': convert_floats_to_decimal(insights_data.get('sentiment_breakdown', {})),
             'top_insights': convert_floats_to_decimal(insights_data.get('top_insights', [])),
-            'pain_points': convert_floats_to_decimal(insights_data.get('pain_points', []))
+            'positive_aspects': convert_floats_to_decimal(insights_data.get('positive_aspects', [])),  # <-- Ensure always present
+            'pain_points': convert_floats_to_decimal(insights_data.get('pain_points', [])),
+            'total_survey_count': convert_floats_to_decimal(total_survey_count),
+            'completed_analyses': convert_floats_to_decimal(completed_analyses),
+            'avg_satisfaction': convert_floats_to_decimal(insights_data.get('avg_satisfaction', 0.0)),
+            'topic_sentiment_map': convert_floats_to_decimal(insights_data.get('topic_sentiment_map', {}))
         }
-        
         # Store in DynamoDB
         insights_table.put_item(Item=item)
         print(f"Insights stored successfully for {user_id}/{upload_id}")
