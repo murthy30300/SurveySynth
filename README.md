@@ -38,6 +38,7 @@ SurveySynth is a **fully serverless feedback analyzer** designed to help course 
 7. Stream triggers triggerVisualizationJob → Glue → PNG charts
 8. Frontend polls for results → renders summary + visuals
 ```
+---
 ### 🔗 Endpoints & Lambda Flows
 | Flow Step              | Trigger/Service   | Lambda Function                                                    | Purpose                              |
 | ---------------------- | ----------------- | ------------------------------------------------------------------ | ------------------------------------ |
@@ -49,6 +50,7 @@ SurveySynth is a **fully serverless feedback analyzer** designed to help course 
 | 📈 Generate Charts     | DynamoDB Stream   | `triggerVisualizationJob`                                          | Triggers `Visual_job` Glue Job       |
 | 🖼️ Final PNG Charts   | Glue Job          | `Visual_job`                                                       | Generate & upload Seaborn/Matplotlib |
 | 📡 Fetch Data for UI   | API Gateway       | `SurveyMetaHandler`, `SurveyInsightHandler`, `getChartUrlsHandler` | Feed UI                              |
+---
 ### 💡 Highlights
 Language Support: Works with free-text fields in English
 
@@ -59,7 +61,7 @@ AI Integration: Amazon Bedrock → Claude Model for summarization
 Visualization: Seaborn-based PNG charts (instead of QuickSight)
 
 Deployment: Fully deployed via AWS SAM and S3
-
+---
 ### 🧰 AWS Services Used
 
 | Service            | Usage                                                              |
@@ -72,7 +74,7 @@ Deployment: Fully deployed via AWS SAM and S3
 | **Amazon Bedrock** | Summarization and sentiment analysis using `Claude` model          |
 | **EventBridge**    | Detect Glue job completion                                         |
 | **CloudWatch**     | Logging, debugging during development                              |
-
+---
 ### 🖼️ Frontend Flow (React + S3 Hosted)
 
 1. Register/Login → Save session in localStorage
@@ -85,7 +87,7 @@ Deployment: Fully deployed via AWS SAM and S3
 5. Optional Download PDF (next)
 Frontend is deployed at:
 👉 https://surveysynth-ui.s3.amazonaws.com/
-
+---
 ### Example Output (from 10 feedback rows)
 ```
 {
@@ -99,20 +101,21 @@ Frontend is deployed at:
   ]
 }
 ```
-
+---
 ### Local Setup (if required)
 1) Setup S3
 2) create Dynamodb table
 3) npm install     # React frontend
 4) npm run dev     # Runs at http://localhost:5173
 5) sam build && sam deploy --guided  # Deploy backend
-
+---
 ### Future Enhancements
 1) Generate downloadable PDF Reports
 2) Embed charts inside PDF
 3) Add email notification on upload completion
 4) Switch to Amazon Cognito for full auth
 5) Multi-language summarization
+---
 ### About the Developer
 Vishnu Nukala 
 University ID: 2200030300
