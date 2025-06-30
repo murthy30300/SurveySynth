@@ -74,6 +74,7 @@ Deployment: Fully deployed via AWS SAM and S3
 | **Amazon Bedrock** | Summarization and sentiment analysis using `Claude` model          |
 | **EventBridge**    | Detect Glue job completion                                         |
 | **CloudWatch**     | Logging, debugging during development                              |
+| **CloudFormation** | Serverless Application model                                       |
 ---
 ### 🖼️ Frontend Flow (React + S3 Hosted)
 
