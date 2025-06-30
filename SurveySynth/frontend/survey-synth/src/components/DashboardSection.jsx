@@ -1,4 +1,4 @@
-// DashboardSection.jsx
+// Enhanced DashboardSection.jsx with improved chart visualization
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import {
@@ -17,6 +17,11 @@ import {
   FileText,
   Clock,
   CheckCircle,
+  Eye,
+  Download,
+  Maximize2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 const API_BASE = "https://mngp6096cl.execute-api.us-east-1.amazonaws.com/Prod";
@@ -33,11 +38,14 @@ const fetchChartUrls = async (userId, uploadId) => {
     return [];
   }
 };
+
 const DashboardSection = ({ userId }) => {
   const [surveyHistory, setSurveyHistory] = useState([]);
   const [insights, setInsights] = useState([]);
   const [loading, setLoading] = useState(true);
   const [chartUrlsMap, setChartUrlsMap] = useState({});
+  const [expandedCharts, setExpandedCharts] = useState(new Set());
+  const [selectedChart, setSelectedChart] = useState(null);
 
   const [stats, setStats] = useState({
     totalSurveys: 0,
@@ -147,6 +155,24 @@ const DashboardSection = ({ userId }) => {
     }
   };
 
+  const toggleChartExpansion = (uploadId) => {
+    const newExpanded = new Set(expandedCharts);
+    if (newExpanded.has(uploadId)) {
+      newExpanded.delete(uploadId);
+    } else {
+      newExpanded.add(uploadId);
+    }
+    setExpandedCharts(newExpanded);
+  };
+
+  const openChartModal = (url, title) => {
+    setSelectedChart({ url, title });
+  };
+
+  const closeChartModal = () => {
+    setSelectedChart(null);
+  };
+
   // ---------- render ----------
   if (loading) {
     return (
@@ -160,11 +186,11 @@ const DashboardSection = ({ userId }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* 🔑 Metrics */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Total Surveys */}
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -183,7 +209,7 @@ const DashboardSection = ({ userId }) => {
         </Card>
 
         {/* Total Responses */}
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -202,7 +228,7 @@ const DashboardSection = ({ userId }) => {
         </Card>
        
         {/* Completed Analyses */}
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -221,7 +247,7 @@ const DashboardSection = ({ userId }) => {
         </Card>
 
         {/* Average Satisfaction */}
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -241,9 +267,9 @@ const DashboardSection = ({ userId }) => {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* 📜 Recent Activity */}
-        <Card>
+        <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>Latest survey processing updates</CardDescription>
@@ -258,7 +284,7 @@ const DashboardSection = ({ userId }) => {
                 surveyHistory.slice(0, 4).map((survey) => (
                   <div
                     key={survey.upload_id}
-                    className="flex items-center justify-between rounded-lg border p-3"
+                    className="flex items-center justify-between rounded-lg border p-3 hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       {survey.status === "analyzed" ? (
@@ -298,7 +324,7 @@ const DashboardSection = ({ userId }) => {
         </Card>
 
         {/* 🔍 Survey Insights */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Survey Performance</CardTitle>
             <CardDescription>
@@ -313,7 +339,7 @@ const DashboardSection = ({ userId }) => {
                 </p>
               ) : (
                 insights.slice(0, 4).map((insight) => (
-                  <div key={insight.upload_id} className="space-y-2">
+                  <div key={insight.upload_id} className="space-y-2 p-4 rounded-lg border hover:shadow-md transition-shadow">
                     {/* row 1 */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -353,48 +379,203 @@ const DashboardSection = ({ userId }) => {
             </div>
           </CardContent>
         </Card>
-         <Card>
-          <CardHeader>
-            <CardTitle>Survey Charts</CardTitle>
-            <CardDescription>Visual analytics for each survey</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-            {insights.slice(0, 4).map((insight) => (
-              <div key={insight.upload_id} className="border-b pb-6 last:border-b-0">
-                <div className="font-medium mb-4 text-lg">
-                  Survey {insight.upload_id}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Array.isArray(chartUrlsMap[insight.upload_id]) &&
-                  chartUrlsMap[insight.upload_id].length > 0 ? (
-                    chartUrlsMap[insight.upload_id].map((url, idx) => (
-                      <img
-                        key={idx}
-                        src={url}
-                        alt={`Chart ${idx + 1}`}
-                        className="w-full rounded-lg border"
-                        style={{ maxHeight: 300, objectFit: "contain" }}
-                      />
-                    ))
+      </div>
+
+      {/* 📊 Enhanced Charts Dashboard */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Survey Analytics Dashboard</h2>
+            <p className="text-gray-600">Interactive visual insights from your survey data</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-blue-500" />
+            <span className="text-sm text-gray-500">
+              {Object.values(chartUrlsMap).flat().length} charts available
+            </span>
+          </div>
+        </div>
+
+        {insights.length === 0 ? (
+          <Card className="border-2 border-dashed border-gray-200">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <BarChart3 className="h-16 w-16 text-gray-300 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Survey Data Available</h3>
+              <p className="text-gray-500 text-center max-w-md">
+                Upload and analyze your first survey to see beautiful data visualizations here.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-8">
+            {insights.map((insight) => {
+              const charts = chartUrlsMap[insight.upload_id] || [];
+              const isExpanded = expandedCharts.has(insight.upload_id);
+              const visibleCharts = isExpanded ? charts : charts.slice(0, 2);
+
+              return (
+                <div
+                  key={insight.upload_id}
+                  className="bg-gradient-to-br from-white to-gray-50 rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300"
+                >
+                  {/* Survey Header */}
+                  <div className="p-6 border-b border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                          <BarChart3 className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900">
+                            Survey {insight.upload_id}
+                          </h3>
+                          <div className="flex items-center gap-4 mt-1">
+                            <div className="flex items-center gap-1">
+                              <Users className="h-4 w-4 text-gray-500" />
+                              <span className="text-sm text-gray-600">
+                                {insight.response_count || 0} responses
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {getTrendIcon(insight.overall_sentiment)}
+                              <span className={`text-sm capitalize ${getSentimentColor(insight.overall_sentiment)}`}>
+                                {insight.overall_sentiment || "Unknown"} sentiment
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-gray-900">
+                          {insight.avg_satisfaction?.toFixed(1) ?? "N/A"}
+                        </div>
+                        <div className="text-sm text-gray-500">Satisfaction Score</div>
+                        <Progress
+                          value={(insight.avg_satisfaction / 5) * 100}
+                          className="h-2 w-24 mt-2"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Charts Grid */}
+                  {charts.length > 0 ? (
+                    <div className="p-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {visibleCharts.map((url, idx) => (
+                          <div
+                            key={idx}
+                            className="group relative bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
+                          >
+                            <div className="aspect-square relative">
+                              <img
+                                src={url}
+                                alt={`Chart ${idx + 1} for Survey ${insight.upload_id}`}
+                                className="w-full h-full object-contain p-4"
+                              />
+                              
+                              {/* Overlay Actions */}
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => openChartModal(url, `Survey ${insight.upload_id} - Chart ${idx + 1}`)}
+                                    className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+                                    title="View full size"
+                                  >
+                                    <Maximize2 className="h-4 w-4 text-gray-700" />
+                                  </button>
+                                  <button
+                                    onClick={() => window.open(url, '_blank')}
+                                    className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+                                    title="Open in new tab"
+                                  >
+                                    <Eye className="h-4 w-4 text-gray-700" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Chart Info */}
+                            <div className="p-3 border-t border-gray-100 bg-gray-50">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700">
+                                  Chart {idx + 1}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  Click to expand
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Show More/Less Button */}
+                      {charts.length > 2 && (
+                        <div className="mt-6 text-center">
+                          <button
+                            onClick={() => toggleChartExpansion(insight.upload_id)}
+                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <ChevronUp className="h-4 w-4" />
+                                Show Less Charts
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-4 w-4" />
+                                Show {charts.length - 2} More Charts
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <span className="col-span-full flex items-center justify-center py-8 text-gray-400 text-sm bg-gray-50 rounded-lg">
-                      No charts available
-                    </span>
+                    <div className="p-12 text-center">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <BarChart3 className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">No Charts Available</h4>
+                      <p className="text-gray-500">Charts are being generated for this survey.</p>
+                    </div>
                   )}
                 </div>
-              </div>
-            ))}
-            {insights.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No survey data available yet
-              </div>
-            )}
-            </div>
-          </CardContent>
-        </Card>
-        
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {/* Chart Modal */}
+      {selectedChart && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] w-full flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {selectedChart.title}
+              </h3>
+              <button
+                onClick={closeChartModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <span className="sr-only">Close</span>
+                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 p-4 overflow-auto">
+              <img
+                src={selectedChart.url}
+                alt={selectedChart.title}
+                className="w-full h-auto max-h-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
