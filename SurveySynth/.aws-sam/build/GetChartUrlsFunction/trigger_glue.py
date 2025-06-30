@@ -6,7 +6,7 @@ ses = boto3.client('ses')  # Add SES client
 
 def send_email(to_address, subject, body):
     response = ses.send_email(
-        Source=to_address,  # The sender's email address (must be verified in SES)
+        Source="vishnumurthy1702@gmail.com",  # The sender's email address (must be verified in SES)
         Destination={
             'ToAddresses': [to_address]
         },

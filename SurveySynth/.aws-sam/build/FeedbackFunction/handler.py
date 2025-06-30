@@ -169,8 +169,21 @@ Please provide a structured analysis in the following JSON format:
     "topics_mentioned": [
         "topic 1",
         "topic 2"
-    ]
+    ],
+    "topic_ratings": {{
+        "topic 1": {{
+            "avg_rating": <average rating out of 5>,
+            "positive_count": <number>,
+            "negative_count": <number>
+        }},
+        "topic 2": {{
+            "avg_rating": <average rating out of 5>,
+            "positive_count": <number>,
+            "negative_count": <number>
+        }}
+    }}
 }}
+For each topic mentioned, estimate an average rating out of 5 (based on the feedback), and count positive and negative mentions. Include this as "topic_ratings" in the JSON.
 
 Focus on:
 1. Overall sentiment distribution
@@ -200,7 +213,6 @@ Respond with valid JSON only.
                 'temperature': 0.3
             })
         )
-        
         # Parse response
         response_body = json.loads(response['body'].read())
         analysis_text = response_body['content'][0]['text']
@@ -212,7 +224,8 @@ Respond with valid JSON only.
             end_idx = analysis_text.rfind('}') + 1
             json_str = analysis_text[start_idx:end_idx]
             analysis_result = json.loads(json_str)
-            
+
+            print("Bedrock analysis_result:", json.dumps(analysis_result, indent=2))
             print(f"Chunk {chunk_num} analysis completed successfully")
             return analysis_result
             

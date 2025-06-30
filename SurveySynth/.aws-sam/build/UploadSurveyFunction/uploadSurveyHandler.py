@@ -105,9 +105,17 @@ def lambda_handler(event, context):
             'body': json.dumps({'error': str(e)})
         }
 
-def cors_headers():
+def cors_headers(event=None):
+    allowed_origins = [
+        'http://localhost:5173',
+        'http://buck30300.s3-website-us-east-1.amazonaws.com'
+    ]
+    origin = ''
+    if event and 'headers' in event and 'origin' in event['headers']:
+        origin = event['headers']['origin']
+    allow_origin = origin if origin in allowed_origins else allowed_origins[1]
     return {
-        'Access-Control-Allow-Origin': 'http://localhost:5173',
+        'Access-Control-Allow-Origin': allow_origin,
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'OPTIONS,POST'
     }
